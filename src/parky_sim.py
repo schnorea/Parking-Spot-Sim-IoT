@@ -92,17 +92,7 @@ parking_config = [
     }
 ]
 
-"""
-{
-	"timestamp": 1519518300,
-	"isOccupied": true,
-	"meter": {
-		"number": 1,
-		"location": ["-75.5712", "-130.5355"],
-		"address": "95085 Florencio Lights, XYZ, AB"
-	}
-}
-"""
+
 
 SECONDS_PER_HOUR = 60 * 60
 SECONDS_PER_MINUTE = 60
@@ -137,6 +127,23 @@ percent_occupied_table = [37.54,
                          45.73]
 
 
+# Example of object returned by IoT meter system
+# this format is set in the Spot class
+"""
+{
+	"timestamp": 1519518300,
+	"isOccupied": true,
+	"meter": {
+		"number": 1,
+		"location": ["-75.5712", "-130.5355"],
+		"address": "95085 Florencio Lights, XYZ, AB"
+	}
+}
+"""
+
+
+# Class that maintains the state of a parking spot and produces
+# the IoT message object
 class Spot(object):
     def __init__(self, address, location, number, isOccupied):
         self.address = address
@@ -161,7 +168,7 @@ class Spot(object):
         result['meter'] = meter
         return result
 
-
+# Class that maintains the state of the entire Parking system
 class Parking(object):
     def __init__(self, conn, parking_config, percent_occupied_table, timestamp, ext_callback):
         self.parking_config = parking_config
@@ -183,7 +190,8 @@ class Parking(object):
         return result
 
     def _re_report_schedule(self):
-        # Calculates when spots should report back
+        # Calculates when spots should report in.  This reporting is in addition
+        # to reporting state change from occupied to empty to occupied
         report_order = list(range(len(self.spots)))
         random.shuffle(report_order)
         # Once per hour starting at minute intervals starting at self.start_timestamp
@@ -367,6 +375,9 @@ class Parking(object):
                 self._call_back(spot.produce(timestamp), mil_time, "Shrink")
 
     def _simulate_re_report(self, timestamp):
+        # Along with reporting when the state of a spot changes, the IoT devices 
+        # monitoring the parking lot spots are configured to report in
+        # at a regular interval 
         _, minute_of_the_hour = divmod(self.timestamp_to_local_mil_time(timestamp),100)
         reporting_now_list = self.re_report_schedule_list[minute_of_the_hour]
         for spot_index in reporting_now_list:
